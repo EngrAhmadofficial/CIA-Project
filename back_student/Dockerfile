@@ -6,7 +6,10 @@ WORKDIR /usr/src/app
 
 COPY package.json yarn.lock ./
 
-RUN yarn install --frozen-lockfile --ignore-engines \
+RUN test -s package.json \
+    && node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+
+RUN yarn install --frozen-lockfile \
     && yarn cache clean
 
 # Monorepo static artifact injection

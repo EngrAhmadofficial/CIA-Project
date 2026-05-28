@@ -3,25 +3,32 @@ import {Request, Response} from 'express';
 import {getManager, getRepository} from 'typeorm';
 import {Order} from '../entity/Order';
 import {Product} from '../entity/Product';
+import logger from '../utils/logger';
 
 class OrderController {
   public static listAll = async (_req: Request, res: Response) => {
+    logger.info('Fetching list of all orders from database');
     try {
       const orderRepository = getRepository(Order);
       const orders = await orderRepository.find({order: {id: 'ASC'}});
+      logger.info({ count: orders.length }, 'Orders list retrieved');
       res.send(orders);
-    } catch (_error) {
+    } catch (error) {
+      logger.error({ error }, 'API execution failed — unable to load orders');
       res.status(500).send('Unable to load orders');
     }
   };
 
   public static getOneById = async (req: Request, res: Response) => {
     const id: number = parseInt(req.params.id, 10);
+    logger.info({ orderId: id }, 'Fetching order by id');
     try {
       const orderRepository = getRepository(Order);
       const order = await orderRepository.findOneOrFail(id);
+      logger.info({ orderId: order.id, productId: order.product.id }, 'Order retrieved');
       res.status(200).send(order);
-    } catch (_error) {
+    } catch (error) {
+      logger.error({ orderId: id, error }, 'API execution failed — order not found');
       res.status(404).send('Order not found');
     }
   };
@@ -31,7 +38,10 @@ class OrderController {
     const amount = Number(req.body.amount);
     const productId = req.body.productId || (req.body.product && req.body.product.id);
 
+    logger.info({ name, amount, productId }, 'Creating new order');
+
     if (!name || !productId || !Number.isFinite(amount) || amount <= 0) {
+      logger.warn({ name, amount, productId }, 'Order creation failed — invalid payload');
       return res.status(400).send('Invalid order payload');
     }
 
@@ -60,8 +70,13 @@ class OrderController {
         return orderRepository.save(order);
       });
 
+      logger.info(
+        { orderId: result.id, productId, amount, totalPrice: result.totalPrice },
+        'Order created successfully',
+      );
       res.status(201).send(result);
-    } catch (_error) {
+    } catch (error) {
+      logger.error({ name, amount, productId, error }, 'API execution failed — unable to create order');
       res.status(400).send('Unable to create order');
     }
   };
@@ -72,7 +87,10 @@ class OrderController {
     const amount = Number(req.body.amount);
     const requestedProductId = req.body.productId || (req.body.product && req.body.product.id);
 
+    logger.info({ orderId: id, name, amount, productId: requestedProductId }, 'Updating order');
+
     if (!name || !Number.isFinite(amount) || amount <= 0) {
+      logger.warn({ orderId: id }, 'Order update failed — invalid payload');
       return res.status(400).send('Invalid order payload');
     }
 
@@ -114,14 +132,17 @@ class OrderController {
         return orderRepository.save(order);
       });
 
+      logger.info({ orderId: result.id }, 'Order updated successfully');
       res.status(200).send(result);
-    } catch (_error) {
+    } catch (error) {
+      logger.error({ orderId: id, error }, 'API execution failed — order not found or unable to update');
       res.status(404).send('Order not found or unable to update');
     }
   };
 
   public static deleteOrder = async (req: Request, res: Response) => {
     const id: number = parseInt(req.params.id, 10);
+    logger.info({ orderId: id }, 'Deleting order');
     try {
       await getManager().transaction(async manager => {
         const productRepository = manager.getRepository(Product);
@@ -133,12 +154,13 @@ class OrderController {
         await orderRepository.delete(id);
       });
 
+      logger.info({ orderId: id }, 'Order deleted successfully');
       res.status(204).send();
-    } catch (_error) {
+    } catch (error) {
+      logger.error({ orderId: id, error }, 'API execution failed — order not found');
       res.status(404).send('Order not found');
     }
   };
 }
 
 export default OrderController;
-

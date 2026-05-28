@@ -44,6 +44,7 @@ services:
     image: ${CIA_API_IMAGE:-cia-api:local}
     container_name: cia-api
     restart: unless-stopped
+    command: ["node", "-r", "newrelic", "start.js"]
     env_file: .env
     # Run the backend process as a non-root user by mapping host UID/GID for 'service-web'
     # Populate SERVICE_USER_UID and SERVICE_USER_GID in your host .env to match the service-web user

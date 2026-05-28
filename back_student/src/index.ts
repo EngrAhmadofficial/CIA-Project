@@ -11,9 +11,9 @@ import * as swaggerUi from 'swagger-ui-express';
 import {createConnection} from 'typeorm';
 import config from './config/config';
 import routes from './routes';
+import logger from './utils/logger';
 
 declare const process: any;
-declare const console: any;
 
 const options = {
   swaggerDefinition: {
@@ -70,10 +70,10 @@ createConnection()
     app.use('/', routes);
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
     app.listen(apiPort, async () => {
-      console.info(`API server is ready on port ${apiPort}`);
+      logger.info({ port: apiPort }, 'API server is ready');
     });
   })
-  .catch(() => {
-    console.error('Failed to start API server');
+  .catch((err) => {
+    logger.error({ err }, 'Failed to start API server');
     process.exit(1);
   });
